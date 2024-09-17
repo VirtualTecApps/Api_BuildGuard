@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "@google-cloud/vision": "^4.3.2",
+    "@tensorflow/tfjs-core": "^4.21.0",
+    "@tensorflow/tfjs-node": "^4.21.0",
+    "@vladmandic/face-api": "^1.7.14",
+    "canvas": "^2.11.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "face-api.js": "^0.22.2",
+    "firebase": "^10.6.0",
+    "firebase-admin": "^12.5.0",
+    "fs": "^0.0.1-security",
+    "multer": "^1.4.5-lts.1",
+    "nodemon": "^3.1.4"
+  }
+}
