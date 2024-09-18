@@ -98,7 +98,7 @@ async function loadKnownFaces() {
 // Endpoint para reconocimiento facial
 app.post('/recognize', upload.single('photo'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).send('No se ha subido ningún archivo.');
+    return res.status(400).send({message:'No se ha subido ningún archivo.'});
   }
 
   try {
@@ -107,7 +107,7 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
 
     const descriptor = await getDescriptors(req.file.buffer);
     if (!descriptor) {
-      return res.status(400).send('No se detectó ninguna cara en la imagen.');
+      return res.status(400).send({message:'No se detectó ninguna cara en la imagen.'});
     }
 
     const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors);
@@ -119,11 +119,12 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
     }
     res.json({
       recognizedPerson: recoP,
-      confidence: 1 - match.distance
+      confidence: 1 - match.distance,
+      message:"Imagen analizada"
     });
   } catch (error) {
     console.error('Error en el reconocimiento facial:', error);
-    res.status(500).send('Error en el reconocimiento facial');
+    res.status(500).send({message:'Error en el reconocimiento facial'});
   }
 });
 
