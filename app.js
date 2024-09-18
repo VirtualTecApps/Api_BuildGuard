@@ -95,6 +95,58 @@ async function loadKnownFaces() {
   }
 }
 
+// Función para obtener los N rostros más similares
+async function findSimilarFaces(queryDescriptor, n = 5) {
+  const similarities = [];
+
+  for (const labeledDescriptor of labeledDescriptors) {
+    for (let i = 0; i < labeledDescriptor.descriptors.length; i++) {
+      const distance = faceapi.euclideanDistance(queryDescriptor, labeledDescriptor.descriptors[i]);
+      similarities.push({
+        label: labeledDescriptor.label,
+        distance: distance,
+        index: i
+      });
+    }
+  }
+
+  similarities.sort((a, b) => a.distance - b.distance);
+  return similarities.slice(0, n);
+}
+
+// Nuevo endpoint para reconocer rostros similares
+app.post('/recognize-similars', upload.single('photo'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({message:'No se ha subido ningún archivo.'});
+  }
+  try {
+    await loadModels();
+    if (labeledDescriptors.length === 0) await loadKnownFaces();
+
+    const queryDescriptor = await getDescriptors(req.file.buffer);
+    if (!queryDescriptor) {
+      return res.status(400).send({message:'No se detectó ninguna cara en la imagen.'});
+    }
+
+    const similarFaces = await findSimilarFaces(queryDescriptor);
+
+    // Obtener información adicional de Firestore
+    const similarFacesWithInfo = await Promise.all(similarFaces.map(async (face) => {
+     
+      return {
+        recognizedPerson: JSON.parse(face.label),
+        distance: face.distance,
+        index: face.index
+      };
+    }));
+
+    res.json({similarFacesWithInfo,message:"Imagen analizada"});
+  } catch (error) {
+    console.error('Error en el reconocimiento de rostros similares:', error);
+    res.status(500).send({message:'Error en el reconocimiento de rostros similares'});
+  }
+});
+
 // Endpoint para reconocimiento facial
 app.post('/recognize', upload.single('photo'), async (req, res) => {
   if (!req.file) {
@@ -127,6 +179,8 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
     res.status(500).send({message:'Error en el reconocimiento facial'});
   }
 });
+
+
 
 // Iniciar el servidor
 const port = process.env.PORT || 3000;
