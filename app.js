@@ -81,8 +81,9 @@ async function loadKnownFaces() {
   for (const doc of snapshot.docs) {
     const data = doc.data();
     const nombre = data.nombre;
+    const imageUrl = data.imageUrl;
     const uid = data.uid;
-    label = {uid:uid,name:nombre}
+    label = {uid:uid,name:nombre,imageUrl:imageUrl}
     const descriptors = [];
     for (const imageUrl of data.imageUrl) {
       const buffer = await loadImageFromFirebase(imageUrl);
