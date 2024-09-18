@@ -11,6 +11,7 @@ const admin = require('firebase-admin');
 const { Storage } = require('@google-cloud/storage');
 require('dotenv').config(); // Cargar las variables de .env
 const privateKey = process.env.PRIVATE_KEY;
+const cors = require('cors');
 
 
 const serviceAccount = {
@@ -34,6 +35,7 @@ admin.initializeApp({
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
+app.use(cors());
 
 const loadImageFromFirebase = async (path) => {
   const bucket = admin.storage().bucket();
