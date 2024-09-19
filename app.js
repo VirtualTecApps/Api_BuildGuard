@@ -120,6 +120,8 @@ app.post('/recognize-similars', upload.single('photo'), async (req, res) => {
   if (!req.file) {
     return res.status(400).send({message:'No se ha subido ningún archivo.'});
   }
+
+  console.log(req.file.buffer);
   try {
     await loadModels();
     if (labeledDescriptors.length === 0) await loadKnownFaces();
@@ -153,6 +155,7 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
   if (!req.file) {
     return res.status(400).send({message:'No se ha subido ningún archivo.'});
   }
+  console.log(req.file.buffer);
 
   try {
     await loadModels();
