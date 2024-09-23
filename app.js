@@ -105,7 +105,7 @@ async function findSimilarFaces(queryDescriptor, n = 5) {
       const distance = faceapi.euclideanDistance(queryDescriptor, labeledDescriptor.descriptors[i]);
       similarities.push({
         label: labeledDescriptor.label,
-        distance: distance,
+        distance: distance, 
         index: i
       });
     }
