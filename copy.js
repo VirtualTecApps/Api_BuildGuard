@@ -37,9 +37,24 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 
+async function listenForChanges() {
+  const usersCollection = apps.firestore().collection("registered_users");
+
+  usersCollection.onSnapshot(async (snapshot) => {
+    labeledDescriptors = [];
+    await loadKnownFaces();  // Recargar los rostros conocidos al detectar cambios
+    console.log('Datos de usuarios actualizados desde Firestore');
+  });
+}
+
+listenForChanges();
+
+
 const loadImageFromFirebase = async (path) => {
   const bucket = admin.storage().bucket();
+  console.log(path);
   const div = path.split("%2F");
+  console.log(div);
   const pt = `users/${div[1]}/uploads/${div[3].split("?")[0]}`;
 
   const file = bucket.file(pt);
@@ -51,12 +66,12 @@ const loadImageFromFirebase = async (path) => {
 
   const [fileBuffer] = await file.download();
   return fileBuffer;
-};
+}; 
 
 // Inicializa los modelos de face-api.js
 let modelsLoaded = false;
 async function loadModels() {
-  if (!modelsLoaded) {
+  if (!modelsLoaded) { 
     await faceapi.nets.ssdMobilenetv1.loadFromDisk('./models');
     await faceapi.nets.faceLandmark68Net.loadFromDisk('./models');
     await faceapi.nets.faceRecognitionNet.loadFromDisk('./models');
@@ -105,7 +120,7 @@ async function findSimilarFaces(queryDescriptor, n = 5) {
       const distance = faceapi.euclideanDistance(queryDescriptor, labeledDescriptor.descriptors[i]);
       similarities.push({
         label: labeledDescriptor.label,
-        distance: distance,
+        distance: distance, 
         index: i
       });
     }
@@ -169,8 +184,8 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
     const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors);
     const match = faceMatcher.findBestMatch(descriptor);
     let recoP = match.label;
-
-    if(recoP !=="unknown"){
+    const umbral = 0.5;
+    if( recoP !=="unknown"){
       recoP = JSON.parse(recoP);
     }
     res.json({

@@ -37,12 +37,27 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 app.use(cors());
 
+async function listenForChanges() {
+  const usersCollection = apps.firestore().collection("registered_users");
+
+  usersCollection.onSnapshot(async (snapshot) => {
+    labeledDescriptors = [];
+    await loadKnownFaces();  // Recargar los rostros conocidos al detectar cambios
+    console.log('Datos de usuarios actualizados desde Firestore');
+  });
+}
+
+listenForChanges();
+
+
 const loadImageFromFirebase = async (path) => {
   const bucket = admin.storage().bucket();
+  //console.log(path);
   const div = path.split("%2F");
+  //console.log(div);
   const pt = `users/${div[1]}/uploads/${div[3].split("?")[0]}`;
 
-  const file = bucket.file(pt);
+  const file = bucket.file(pt); 
   const [exists] = await file.exists();
 
   if (!exists) {
@@ -51,12 +66,12 @@ const loadImageFromFirebase = async (path) => {
 
   const [fileBuffer] = await file.download();
   return fileBuffer;
-};
+}; 
 
 // Inicializa los modelos de face-api.js
 let modelsLoaded = false;
 async function loadModels() {
-  if (!modelsLoaded) {
+  if (!modelsLoaded) { 
     await faceapi.nets.ssdMobilenetv1.loadFromDisk('./models');
     await faceapi.nets.faceLandmark68Net.loadFromDisk('./models');
     await faceapi.nets.faceRecognitionNet.loadFromDisk('./models');
@@ -81,17 +96,31 @@ async function loadKnownFaces() {
   for (const doc of snapshot.docs) {
     const data = doc.data();
     const nombre = data.nombre;
-    const imageUrl = data.imageUrl;
     const uid = data.uid;
-    label = {uid:uid,name:nombre,imageUrl:imageUrl}
+    let imageUrls = data.imageUrl; // Suponiendo que es un array de URLs
     const descriptors = [];
-    for (const imageUrl of data.imageUrl) {
+    label = {uid:uid,name:nombre,imageUrl:imageUrls}
+
+    for (const imageUrl of imageUrls) {
       const buffer = await loadImageFromFirebase(imageUrl);
       const descriptor = await getDescriptors(buffer);
-      if (descriptor) descriptors.push(descriptor);
+
+      if (descriptor) {
+        descriptors.push(descriptor);
+      } else {
+        // Si no se detecta un rostro, eliminar la URL de imageUrls
+        imageUrls = imageUrls.filter(url => url !== imageUrl);
+        console.log(`Eliminada la imagen ${imageUrl} para el usuario ${data.nombre} por no detectar rostro.`);
+      }
     }
+
+    // Actualizar la lista de imageUrls en Firestore
+    await apps.firestore().collection("registered_users").doc(uid).update({
+      imageUrl: imageUrls
+    });
+
     if (descriptors.length > 0) {
-      labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(JSON.stringify(label), descriptors));
+      labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(JSON.stringify({ label }), descriptors));
     }
   }
 }
@@ -107,7 +136,7 @@ async function findSimilarFaces(queryDescriptor, n = 5) {
         label: labeledDescriptor.label,
         distance: distance, 
         index: i
-      });
+      }); 
     }
   }
 
@@ -121,7 +150,7 @@ app.post('/recognize-similars', upload.single('photo'), async (req, res) => {
     return res.status(400).send({message:'No se ha subido ningún archivo.'});
   }
 
-  console.log(req.file.buffer);
+  console.log(req.file.buffer); 
   try {
     await loadModels();
     if (labeledDescriptors.length === 0) await loadKnownFaces();
@@ -169,8 +198,8 @@ app.post('/recognize', upload.single('photo'), async (req, res) => {
     const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors);
     const match = faceMatcher.findBestMatch(descriptor);
     let recoP = match.label;
-
-    if(recoP !=="unknown"){
+    const umbral = 0.5;
+    if( recoP !=="unknown"){
       recoP = JSON.parse(recoP);
     }
     res.json({
